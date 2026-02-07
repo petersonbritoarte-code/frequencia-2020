@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Sweep 20Hz–20kHz + Contador Sincronizado</title>
 
 <!-- PWA -->
@@ -10,32 +10,36 @@
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Sweep 20–20k">
+<meta name="apple-mobile-web-app-title" content="Freq 20/20">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 
 <style>
   :root{ color-scheme: dark; --accent:#8bd3ff; }
 
+  *{ box-sizing:border-box; }
+
   body{
     margin:0;
     background:#000;
-    height:100vh;
+    min-height:100svh;
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-    display:grid;
-    place-items:center;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 0;
   }
 
-.stage{
-  width:100%;
-  min-height:100svh;
-  position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding: 76px 16px 24px;
-  box-sizing:border-box;
+  .stage{
+    width:100%;
+    min-height:100svh;
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
   }
 
+  /* HUD */
   .hud{
     position:absolute;
     top:14px;
@@ -46,9 +50,12 @@
     gap:12px;
     align-items:center;
     flex-wrap:wrap;
+    z-index:10;
+    pointer-events:none; /* evita bloquear toque no mobile */
   }
 
   .pill{
+    pointer-events:none;
     display:flex;
     gap:10px;
     align-items:center;
@@ -74,13 +81,15 @@
     box-shadow: 0 0 14px rgba(255,255,255,.08);
   }
 
+  /* Centro */
   .center{
     text-align:center;
     display:flex;
     flex-direction:column;
     align-items:center;
     gap:10px;
-    width:min(980px, 96vw);
+    width:min(980px, 100%);
+    padding-top: 70px; /* espaço para HUD (desktop) */
   }
 
   #brandTop{
@@ -138,7 +147,7 @@
     gap:12px;
     align-items:center;
     justify-content:center;
-    width:min(900px, 96vw);
+    width:min(900px, 100%);
   }
 
   .controlsRow{
@@ -175,12 +184,15 @@
     border-radius:16px;
     color:#c9cdd1;
     font-size:14px;
-    width:min(760px, 96vw);
+    width:min(760px, 100%);
     justify-content:center;
     flex-wrap:wrap;
   }
 
-  input[type="range"]{ width: 320px; }
+  input[type="range"]{
+    width: 320px;
+    touch-action: pan-y; /* ajuda no iOS para arrastar slider */
+  }
 
   .mono{
     font-family:ui-monospace,Menlo,Consolas,monospace;
@@ -188,10 +200,36 @@
     font-weight:800;
   }
 
-  @media (max-width: 720px){ 
-.hud{ position:static; justify-content:center; } 
-input[type="range"]{ width:240px; } 
-#freq{ font-size:clamp(56px,14vw,92px); } }
+  /* Mobile: empilha HUD e evita sobreposição */
+  @media (max-width: 720px){
+    .center{ padding-top: 0; }
+
+    .hud{
+      position:static;
+      width:100%;
+      justify-content:center;
+      gap:10px;
+      margin-bottom: 10px;
+      pointer-events:none;
+    }
+    .pill{
+      width:100%;
+      justify-content:center;
+      text-align:center;
+      white-space:normal;
+    }
+
+    #brandTop{ font-size:16px; margin-bottom:2px; }
+    #bandLabel{ font-size:15px; }
+    #freq{ font-size:clamp(54px,16vw,92px); }
+
+    #bandTip{ font-size:14px; }
+    .safety{ font-size:13px; }
+
+    .volBox, .seekBox{ width:100%; }
+    input[type="range"]{ width:min(260px, 80vw); }
+
+    button{ padding:14px 22px; font-size:16px; }
   }
 </style>
 </head>
@@ -221,13 +259,13 @@ input[type="range"]{ width:240px; }
 
       <div id="bandLabel">SUBGRAVE (20–40 Hz)</div>
       <div id="freq">20 Hz</div>
-      <div id="bandTip">Sensação física e “peso”. Mais percebido no corpo do que no ouvido.</div>
+      <div id="bandTip">Sensação física e “peso”. Mais sentido no corpo do que no ouvido.</div>
 
       <div class="safety">
         <strong>Segurança:</strong>
         Comece com volume baixo. Sweeps (Varreduras) podem ficar agressivos em 2–5 kHz.<br>
         Evite fones no máximo, faça pausas e interrompa ao menor sinal de desconforto.<br>
-        “dBFS” exibido é ganho digital (não é SPL no ouvido). O volume real dependerá muito de seu equipamento e ajustes pessoais.
+        O “dBFS” exibido é ganho digital (não é SPL no ouvido). O volume real depende também de seu equipamento e ajustes pessoais.
       </div>
 
       <div class="controlsCenter">
@@ -256,8 +294,8 @@ input[type="range"]{ width:240px; }
   </div>
 
 <script>
-/* ====== Seu script atual (seek + áudio) ====== */
 (() => {
+  // Bandas + cor + dica
   const BANDS = [
     { n:"Subgrave",    min:20,   max:40,      c:"#8bd3ff", t:"Sensação física e “peso”. Mais sentido no corpo do que no ouvido." },
     { n:"Grave-Baixo", min:40,   max:80,      c:"#66e0ff", t:"Fundação do grave. Base rítmica e sustentação do low-end." },
@@ -271,10 +309,17 @@ input[type="range"]{ width:240px; }
 
   const fStart = 20, fEnd = 20000, duration = 300;
 
-  let ctx=null, osc=null, gain=null, raf=null;
-  let tStart=0, tEnd=0, lastBand=-1;
-  let offsetSec=0, isRunning=false, isUserDrag=false;
+  // WebAudio
+  let ctx = null, osc = null, gain = null, raf = null;
+  let tStart = 0, tEnd = 0;
+  let lastBand = -1;
 
+  // Estado
+  let offsetSec = 0;
+  let isRunning = false;
+  let isUserDrag = false;
+
+  // UI
   const freqEl = document.getElementById("freq");
   const bandEl = document.getElementById("bandLabel");
   const tipEl  = document.getElementById("bandTip");
@@ -292,13 +337,14 @@ input[type="range"]{ width:240px; }
   const srInfo   = document.getElementById("srInfo");
   const gainInfo = document.getElementById("gainInfo");
 
-  function fmtHz(f){ return Math.round(f).toLocaleString("pt-BR") + " Hz"; }
   function pad2(n){ return String(n).padStart(2,"0"); }
   function fmtTime(sec){
     sec = Math.max(0, Math.floor(sec));
     const m = Math.floor(sec/60), s = sec%60;
     return `${pad2(m)}:${pad2(s)}`;
   }
+  function fmtHz(f){ return Math.round(f).toLocaleString("pt-BR") + " Hz"; }
+
   function gainToDbfs(g){
     const x = Math.max(0.000001, g);
     return 20 * Math.log10(x);
@@ -311,6 +357,7 @@ input[type="range"]{ width:240px; }
     }
     return BANDS.length-1;
   }
+
   function applyBand(i){
     const b = BANDS[i];
     const maxShown = (b.max>20000) ? "20.000" : String(Math.round(b.max));
@@ -318,42 +365,49 @@ input[type="range"]{ width:240px; }
     tipEl.textContent = b.t;
     document.documentElement.style.setProperty("--accent", b.c);
   }
+
   function freqAt(t){
     const p = Math.min(Math.max(t / duration, 0), 1);
     return fStart * Math.pow(fEnd/fStart, p);
   }
+
   function updateSeekUI(t){
     const p = Math.min(Math.max(t / duration, 0), 1);
     seekLabel.textContent = `${fmtTime(t)} / ${fmtTime(duration)}`;
     progInfo.textContent = `${Math.round(p*100)}%`;
   }
+
   function previewAt(t){
     const f = freqAt(t);
     freqEl.textContent = fmtHz(f);
+
     const bi = bandIndexFor(f);
     applyBand(bi);
     lastBand = bi;
+
     updateSeekUI(t);
   }
+
   function setRunning(r){
     isRunning = r;
     startBtn.disabled = r;
     stopBtn.disabled  = !r;
   }
 
-  function stopAll({resetToZero=false} = {}){
-    if (!ctx) {
-      if (resetToZero){
-        offsetSec = 0;
-        seek.value = String(offsetSec);
-        previewAt(offsetSec);
-      }
-      setRunning(false);
-      return;
-    }
+  function ensureCtx(){
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
 
-    if (raf) cancelAnimationFrame(raf);
-    raf = null;
+  async function ensureAudioRunning(){
+    ensureCtx();
+    if (ctx.state === "suspended") {
+      try { await ctx.resume(); } catch(e) {}
+    }
+  }
+
+  function stopOscOnly(){
+    if (!ctx || !osc) return;
 
     const now = ctx.currentTime;
 
@@ -362,81 +416,63 @@ input[type="range"]{ width:240px; }
       gain.gain.setValueAtTime(gain.gain.value, now);
       gain.gain.linearRampToValueAtTime(0.00001, now + 0.03);
     }
-    try { osc && osc.stop(now + 0.04); } catch(e){}
 
-    setTimeout(() => {
-      try { ctx && ctx.close(); } catch(e){}
-      ctx = osc = gain = null;
+    try { osc.stop(now + 0.04); } catch(e) {}
+    osc = null;
+  }
 
+  async function startFromOffset(newOffset){
+    // mobile-safe: gesto do usuário -> resume
+    await ensureAudioRunning();
+
+    // se já tocando, para só o oscilador (mantém ctx vivo e gesto válido)
+    if (osc) stopOscOnly();
+
+    offsetSec = Math.min(Math.max(newOffset, 0), duration);
+    seek.value = String(offsetSec);
+
+    if (offsetSec >= duration) {
+      previewAt(duration);
       setRunning(false);
-      srInfo.textContent = "—";
+      return;
+    }
 
-      if (resetToZero){
-        offsetSec = 0;
-        seek.value = String(offsetSec);
-      }
-      previewAt(offsetSec);
+    // cria osc/gain dentro do mesmo ctx
+    osc = ctx.createOscillator();
+    gain = ctx.createGain();
+    osc.type = "sine";
 
-      const g = Number(vol.value);
-      gainInfo.textContent = `${g.toFixed(3)} (≈ ${gainToDbfs(g).toFixed(1)} dBFS)`;
-    }, 90);
-  }
+    const g0 = Math.max(0.00001, Number(vol.value));
+    gain.gain.value = g0;
 
- async function startFromOffset(newOffset){
-  if (ctx) {
-    stopAll({resetToZero:false});
-    setTimeout(() => startFromOffset(newOffset), 110);
-    return;
-  }
+    osc.connect(gain);
+    gain.connect(ctx.destination);
 
-  offsetSec = Math.min(Math.max(newOffset, 0), duration);
-  seek.value = String(offsetSec);
+    const now = ctx.currentTime;
+    tStart = now + 0.05;
+    const remaining = duration - offsetSec;
+    tEnd = tStart + remaining;
 
-  if (offsetSec >= duration) {
-    previewAt(duration);
-    return;
-  }
+    const f0 = freqAt(offsetSec);
+    osc.frequency.setValueAtTime(f0, tStart);
+    osc.frequency.exponentialRampToValueAtTime(fEnd, tEnd);
 
-  ctx = new (window.AudioContext || window.webkitAudioContext)();
+    srInfo.textContent = `${Math.round(ctx.sampleRate)} Hz`;
+    gainInfo.textContent = `${g0.toFixed(3)} (≈ ${gainToDbfs(g0).toFixed(1)} dBFS)`;
 
-  // ✅ FIX MOBILE (iOS/Android): garantir que o AudioContext saia do "suspended"
-  if (ctx.state === "suspended") {
-    try { await ctx.resume(); } catch(e) {}
-  }
+    previewAt(offsetSec);
 
-  osc = ctx.createOscillator();
-  gain = ctx.createGain();
-  osc.type = "sine";
+    osc.start(tStart);
+    osc.stop(tEnd);
 
-  const g0 = Math.max(0.00001, Number(vol.value));
-  gain.gain.value = g0;
+    setRunning(true);
 
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-
-  const now = ctx.currentTime;
-  tStart = now + 0.05;
-  const remaining = duration - offsetSec;
-  tEnd = tStart + remaining;
-
-  const f0 = freqAt(offsetSec);
-  osc.frequency.setValueAtTime(f0, tStart);
-  osc.frequency.exponentialRampToValueAtTime(fEnd, tEnd);
-
-  srInfo.textContent = `${Math.round(ctx.sampleRate)} Hz`;
-  gainInfo.textContent = `${g0.toFixed(3)} (≈ ${gainToDbfs(g0).toFixed(1)} dBFS)`;
-
-  previewAt(offsetSec);
-
-  osc.start(tStart);
-  osc.stop(tEnd);
-
-  setRunning(true);
-  raf = requestAnimationFrame(loop);
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(loop);
   }
 
   function loop(){
-    if (!ctx) return;
+    if (!ctx || !osc) return;
 
     const now = ctx.currentTime;
     const tAudio = now - tStart;
@@ -460,50 +496,83 @@ input[type="range"]{ width:240px; }
     const g = gain ? gain.gain.value : Number(vol.value);
     gainInfo.textContent = `${g.toFixed(3)} (≈ ${gainToDbfs(g).toFixed(1)} dBFS)`;
 
-    if (now < tEnd) raf = requestAnimationFrame(loop);
-    else {
+    if (now < tEnd) {
+      raf = requestAnimationFrame(loop);
+    } else {
+      // terminou
       offsetSec = duration;
       setRunning(false);
-      stopAll({resetToZero:false});
+      stopOscOnly();
+      previewAt(offsetSec);
     }
   }
 
-  // volume
+  // Volume
   vol.addEventListener("input", () => {
     const v = Number(vol.value);
     volLabel.textContent = Math.round(v*100) + "%";
     gainInfo.textContent = `${v.toFixed(3)} (≈ ${gainToDbfs(v).toFixed(1)} dBFS)`;
+
     if (gain && ctx){
       const now = ctx.currentTime;
       gain.gain.setTargetAtTime(Math.max(0.00001, v), now, 0.02);
     }
   });
 
-  // seek
+  // Seek (mobile-safe)
   seek.addEventListener("input", () => {
-    const v = Number(seek.value);
-    offsetSec = v;
+    offsetSec = Number(seek.value);
     if (!isRunning) previewAt(offsetSec);
     else updateSeekUI(offsetSec);
   });
 
-  seek.addEventListener("pointerdown", () => { isUserDrag = true; });
-  window.addEventListener("pointerup", () => {
+  // iOS/Android: gesto de arrastar
+  seek.addEventListener("touchstart", () => { isUserDrag = true; }, {passive:true});
+  seek.addEventListener("touchend", async () => {
+    isUserDrag = false;
+    if (isRunning) await startFromOffset(Number(seek.value));
+  }, {passive:true});
+
+  // Desktop/Android (mouse)
+  seek.addEventListener("mousedown", () => { isUserDrag = true; });
+  window.addEventListener("mouseup", async () => {
     if (!isUserDrag) return;
     isUserDrag = false;
-    if (isRunning) startFromOffset(Number(seek.value));
-    else previewAt(Number(seek.value));
+    if (isRunning) await startFromOffset(Number(seek.value));
   });
 
-startBtn.addEventListener("click", async () => {
-  await startFromOffset(Number(seek.value));
-});
-  stopBtn.addEventListener("click", () => {
+  // iOS: às vezes só dispara no change
+  seek.addEventListener("change", async () => {
     offsetSec = Number(seek.value);
-    stopAll({resetToZero:false});
+    if (isRunning) await startFromOffset(offsetSec);
+    else previewAt(offsetSec);
   });
 
-  // init
+  // Botões
+  startBtn.addEventListener("click", async () => {
+    await startFromOffset(Number(seek.value));
+  });
+
+  stopBtn.addEventListener("click", () => {
+    // para loop
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+
+    // para oscilador
+    stopOscOnly();
+
+    // mantém posição e UI
+    offsetSec = Number(seek.value);
+    setRunning(false);
+    srInfo.textContent = "—";
+    previewAt(offsetSec);
+
+    // (opcional) manter ctx aberto para retomar rápido no mobile
+    // Se quiser fechar para liberar recursos, descomente:
+    // if (ctx){ try{ ctx.close(); }catch(e){} ctx=null; }
+  });
+
+  // Init
   const gInit = Number(vol.value);
   volLabel.textContent = Math.round(gInit*100) + "%";
   gainInfo.textContent = `${gInit.toFixed(3)} (≈ ${gainToDbfs(gInit).toFixed(1)} dBFS)`;
@@ -517,7 +586,7 @@ startBtn.addEventListener("click", async () => {
 })();
 </script>
 
-<!-- Registra Service Worker (offline) -->
+<!-- Service Worker (offline) -->
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
