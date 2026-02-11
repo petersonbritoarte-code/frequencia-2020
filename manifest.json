@@ -1,12 +1,21 @@
 {
-  "name": "Sweep 20Hz–20kHz (Offline)",
-  "short_name": "Sweep 20–20k",
+  "name": "Frequência 20/20",
+  "short_name": "Freq 20/20",
+  "description": "Gerador de sweep 20Hz–20kHz, ruído branco e ruído rosa para estudo e demonstração auditiva. Desenvolvido por Prof. Peterson Brito.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }
