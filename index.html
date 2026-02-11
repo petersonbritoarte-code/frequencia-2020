@@ -401,28 +401,26 @@
   }
 function previewNoise(){
   const isWhite = (mode === "white");
-  const isPink  = (mode === "pink");
+  const accent = isWhite ? "#ffffff" : "#ff6ec7"; // rosa
 
-  // cores do modo ruído
-  const accent = isWhite ? "#ffffff" : "#ff6ec7";
-
-  // Interface + textos principais
+  // cor global do app (tudo que usa --accent)
   document.documentElement.style.setProperty("--accent", accent);
+
+  // cor do nome do modo (caso você tenha mexido via style)
   modeName.style.color = accent;
 
-  // Título central e labels
+  // textos centrais
   freqEl.textContent = "—";
   bandEl.textContent = isWhite ? "RUÍDO BRANCO" : "RUÍDO ROSA";
   tipEl.textContent =
     isWhite
-      ? "Energia igual por Hz. Útil para demonstrar hiss, espectro e percepção de brilho."
-      : "Energia por oitava (≈ -3 dB/oitava). Soa mais “equilibrado” ao ouvido; ótimo para referência.";
+      ? "Energia igual por Hz. Flat tecnicamente, mas soa com excesso de agudo ao ouvido humano."
+      : "Energia por oitava (≈ -3 dB/oitava).Não-Flat tecnicamente, mas soa “flat” ao ouvido; ótimo para referência.";
 
-  // Seek e progresso (não faz sentido em ruído)
+  // seek/progresso não aplicam em ruído
   seekLabel.textContent = `00:00 / ${fmtTime(duration)}`;
   progInfo.textContent = "—";
 }
-  }
   function setRunning(r){
     isRunning = r;
     startBtn.disabled = r;
@@ -681,13 +679,26 @@ else {
     if (isRunning) resumeCtxThen(() => startSweepFromOffset(Number(seek.value)));
   });
 
-  startBtn.addEventListener("click", () => {
-    resumeCtxThen(() => {
-      ensureCtx(); ensureGain();
-      if (!whiteBuf || !pinkBuf) ensureNoiseBuffers();
-      if (mode === "sweep") startSweepFromOffset(Number(seek.value));
-      else startNoise();
-    });
+function startAction(){
+  resumeCtxThen(() => {
+    ensureCtx(); ensureGain();
+    if (!whiteBuf || !pinkBuf) ensureNoiseBuffers();
+    if (mode === "sweep") startSweepFromOffset(Number(seek.value));
+    else startNoise();
+  });
+}
+
+// desbloqueio mais confiável (mouse/touch)
+startBtn.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  startAction();
+}, { passive:false });
+
+// fallback
+startBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  startAction();
+});
   });
 
   stopBtn.addEventListener("click", () => {
@@ -726,21 +737,19 @@ else if (mode === "pink") {
   setRunning(false);
 
   // ===== LINK DO CANAL =====
-  const brandTopBtn = document.getElementById("brandTop");
-  const YT_WEB = "https://www.youtube.com/@ProfPetersonBrito";
-  const YT_APP = "youtube://www.youtube.com/@ProfPetersonBrito";
+const brandTopBtn = document.getElementById("brandTop");
+const YT_WEB = "https://www.youtube.com/@ProfPetersonBrito";
+const YT_APP = "youtube://www.youtube.com/@ProfPetersonBrito";
 
-  brandTopBtn.addEventListener("click", () => {
-    const choice = prompt("Abrir canal no: \n1 = App do YouTube\n2 = Navegador", "1");
-    if (choice === "1") {
-      window.location.href = YT_APP;
-      setTimeout(() => window.open(YT_WEB, "_blank", "noopener,noreferrer"), 900);
-    } else {
-      window.open(YT_WEB, "_blank", "noopener,noreferrer");
-    }
-  });
-
-})();
+brandTopBtn.addEventListener("click", () => {
+  const choice = prompt("Abrir canal no:\n1 = App do YouTube\n2 = Navegador", "1");
+  if (choice === "1") {
+    window.location.href = YT_APP;
+    setTimeout(() => window.open(YT_WEB, "_blank", "noopener,noreferrer"), 900);
+  } else {
+    window.open(YT_WEB, "_blank", "noopener,noreferrer");
+  }
+});
 
 })();
 </script>
@@ -754,3 +763,4 @@ else if (mode === "pink") {
 </script>
 </body>
 </html>
+
