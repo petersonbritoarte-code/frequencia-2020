@@ -224,53 +224,7 @@
     background:var(--accent);
     box-shadow: 0 0 14px rgba(255,255,255,.08);
   
-
-/* ===== Modal YouTube ===== */
-.modal{
-  position:fixed;
-  inset:0;
-  background: rgba(0,0,0,.55);
-  display:none;               /* começa escondido */
-  align-items:center;
-  justify-content:center;
-  padding: 18px;
-  z-index: 9999;
-}
-.modal.show{ display:flex; }  /* aparece quando tiver .show */
-
-.modalCard{
-  width:min(520px, 96vw);
-  border:1px solid #2b2b2b;
-  background:#0b0b0b;
-  border-radius:18px;
-  padding:14px;
-  color:#e8eaed;
-  box-shadow: 0 18px 60px rgba(0,0,0,.5);
-}
-.modalTitle{
-  font-weight: 950;
-  font-size: 16px;
-  margin-bottom: 6px;
-}
-.modalText{
-  color:#b8bcc1;
-  font-size: 14px;
-  line-height: 1.4;
-  margin-bottom: 12px;
-}
-.modalBtns{
-  display:flex;
-  gap:10px;
-  justify-content:center;
-  flex-wrap:wrap;
-  margin-bottom: 10px;
-}
-.modalClose{
-  width:100%;
-  background:#111;
-}
-
-  @media (max-width: 720px){
+ @media (max-width: 720px){
     #brandTop{ font-size:16px; }
     #bandLabel{ font-size:15px; }
     #bandTip{ font-size:14px; }
@@ -285,9 +239,7 @@
   <div class="stage">
 
     <div class="center">
-      <button id="brandTop" type="button" aria-label="Abrir canal do YouTube">
-        youtube.com/@ProfPetersonBrito
-      </button>
+<button id="brandTop" type="button">youtube.com/@ProfPetersonBrito</button>
 
       <div id="modeLabel">Modo: <span class="mono" id="modeName">SWEEP</span></div>
 
@@ -345,20 +297,6 @@
 
   </div>
 
-  <!-- Modal YouTube (só aparece quando clicar no canal) -->
-  <div id="ytModal" class="modal" hidden>
-    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="ytTitle">
-      <div class="modalTitle" id="ytTitle">Abrir canal</div>
-      <div class="modalText">Escolha como abrir o canal do YouTube:</div>
-
-      <div class="modalBtns">
-        <button id="openYtApp" type="button">Abrir no app</button>
-        <button id="openYtWeb" type="button">Abrir no navegador</button>
-      </div>
-      <button class="modalClose" type="button">Cancelar</button>
-    </div>
-  </div>
-
 <script>
 (() => {
   // ====== CONFIG ======
@@ -401,52 +339,6 @@
   const modeWhiteBtn = document.getElementById("modeWhite");
   const modePinkBtn  = document.getElementById("modePink");
 
-  // ===== Modal YouTube =====
-const brandTopBtn = document.getElementById("brandTop");
-const ytModal = document.getElementById("ytModal");
-const openYtApp = document.getElementById("openYtApp");
-const openYtWeb = document.getElementById("openYtWeb");
-
-const YT_WEB = "https://www.youtube.com/@ProfPetersonBrito";
-const YT_APP = "youtube://www.youtube.com/@ProfPetersonBrito";
-
-function showYtModal(){ ytModal.classList.add("show"); }
-function hideYtModal(){ ytModal.classList.remove("show"); }
-
-// ao iniciar, GARANTE fechado
-hideYtModal();
-
-// abre só ao clicar no nome do canal
-brandTopBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  showYtModal();
-});
-
-// fecha clicando fora do card OU no botão Cancelar (classe .modalClose)
-ytModal.addEventListener("click", (e) => {
-  if (e.target === ytModal || e.target.closest(".modalClose")) {
-    e.preventDefault();
-    hideYtModal();
-  }
-});
-
-// ESC fecha (desktop)
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") hideYtModal();
-});
-
-openYtWeb.addEventListener("click", (e) => {
-  e.preventDefault();
-  hideYtModal();
-  window.open(YT_WEB, "_blank", "noopener,noreferrer");
-});
-
-openYtApp.addEventListener("click", (e) => {
-  e.preventDefault();
-  hideYtModal();
-  window.location.href = YT_APP;
-  setTimeout(() => window.open(YT_WEB, "_blank", "noopener,noreferrer"), 900);
-});
   // ====== AUDIO ======
   let ctx = null, gain = null, osc = null, noiseSrc = null;
   let raf = null, tStart = 0, tEnd = 0;
@@ -505,16 +397,29 @@ openYtApp.addEventListener("click", (e) => {
     }
     updateSeekUI(t);
   }
-  function previewNoise(){
-    freqEl.textContent = "—";
-    bandEl.textContent = (mode === "white") ? "RUÍDO BRANCO" : "RUÍDO ROSA";
-    tipEl.textContent =
-      (mode === "white")
-        ? "Energia igual por Hz. Útil para mostrar espectro, hiss e percepção de brilho."
-        : "Energia por oitava (≈ -3 dB/oitava). Soa mais “equilibrado” ao ouvido; bom para referência e testes.";
-    document.documentElement.style.setProperty("--accent", (mode === "white") ? "#cfff6a" : "#ffe66a");
-    seekLabel.textContent = `00:00 / ${fmtTime(duration)}`;
-    progInfo.textContent = "—";
+function previewNoise(){
+  const isWhite = (mode === "white");
+  const isPink  = (mode === "pink");
+
+  // cores do modo ruído
+  const accent = isWhite ? "#ffffff" : "#ff6ec7";
+
+  // Interface + textos principais
+  document.documentElement.style.setProperty("--accent", accent);
+  modeName.style.color = accent;
+
+  // Título central e labels
+  freqEl.textContent = "—";
+  bandEl.textContent = isWhite ? "RUÍDO BRANCO" : "RUÍDO ROSA";
+  tipEl.textContent =
+    isWhite
+      ? "Energia igual por Hz. Útil para demonstrar hiss, espectro e percepção de brilho."
+      : "Energia por oitava (≈ -3 dB/oitava). Soa mais “equilibrado” ao ouvido; ótimo para referência.";
+
+  // Seek e progresso (não faz sentido em ruído)
+  seekLabel.textContent = `00:00 / ${fmtTime(duration)}`;
+  progInfo.textContent = "—";
+}
   }
   function setRunning(r){
     isRunning = r;
@@ -814,9 +719,27 @@ else if (mode === "pink") {
   volLabel.textContent = Math.round(gInit*100) + "%";
   gainInfo.textContent = `${gInit.toFixed(3)} (≈ ${gainToDbfs(gInit).toFixed(1)} dBFS)`;
 
-  setMode("sweep");
+   setMode("sweep");
   previewSweepAt(0);
   setRunning(false);
+
+  // ===== LINK DO CANAL =====
+  const brandTopBtn = document.getElementById("brandTop");
+  const YT_WEB = "https://www.youtube.com/@ProfPetersonBrito";
+  const YT_APP = "youtube://www.youtube.com/@ProfPetersonBrito";
+
+  brandTopBtn.addEventListener("click", () => {
+    const choice = prompt("Abrir canal no: \n1 = App do YouTube\n2 = Navegador", "1");
+    if (choice === "1") {
+      window.location.href = YT_APP;
+      setTimeout(() => window.open(YT_WEB, "_blank", "noopener,noreferrer"), 900);
+    } else {
+      window.open(YT_WEB, "_blank", "noopener,noreferrer");
+    }
+  });
+
+})();
+
 })();
 </script>
 
