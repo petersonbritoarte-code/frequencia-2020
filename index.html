@@ -692,48 +692,56 @@ gain.gain.setValueAtTime(g0, nowG);
     }
   }
 
-  // ===== Mode switch =====
+// ===== Mode switch =====
 function setMode(newMode){
-  mode = newMode;
+  // 1) normaliza o modo SEM efeitos colaterais
+  const nextMode = String(newMode).toLowerCase().trim();
+  mode = nextMode;
 
+  // 2) UI dos botões
   modeSweepBtn.classList.toggle("active", mode === "sweep");
   modeWhiteBtn.classList.toggle("active", mode === "white");
   modePinkBtn.classList.toggle("active",  mode === "pink");
 
-  if (mode === "sweep"){
+  // 3) seek: só funciona no sweep (sempre roda!)
+  const isSweep = (mode === "sweep");
+  seek.disabled = !isSweep;
+  seek.classList.toggle("disabled", !isSweep);
+
+  // 4) Atualiza textos/tela conforme modo
+  if (isSweep){
     modeName.textContent = "SWEEP";
     signalInfo.textContent = "SWEEP";
     curveInfo.textContent = "LOG";
     modeName.style.color = "";
+
+    // volta a preview do sweep no ponto atual do slider
     previewSweepAt(Number(seek.value));
-  } else if (mode === "white") {
-modeName.textContent = "RUÍDO BRANCO (White Noise)";
-signalInfo.textContent = "RUÍDO BRANCO (White Noise)";
+  }
+  else if (mode === "white"){
+    modeName.textContent = "RUÍDO BRANCO (White Noise)";
+    signalInfo.textContent = "RUÍDO BRANCO (White Noise)";
     curveInfo.textContent = "—";
     modeName.style.color = "#ffffff";
+
     previewNoise();
-  } else {
-modeName.textContent = "RUÍDO ROSA (Pink Noise)";
-signalInfo.textContent = "RUÍDO ROSA (Pink Noise)";
+  }
+  else { // pink
+    modeName.textContent = "RUÍDO ROSA (Pink Noise)";
+    signalInfo.textContent = "RUÍDO ROSA (Pink Noise)";
     curveInfo.textContent = "—";
     modeName.style.color = "#ff6ec7";
-    previewNoise();
-// habilita/desabilita o seek conforme modo
-// Normaliza o modo (evita "SWEEP" / "Sweep" quebrar comparações)
-mode = String(mode).toLowerCase();
 
-const isSweep = (mode === "sweep");
-seek.disabled = !isSweep;
-seek.classList.toggle("disabled", !isSweep);
+    previewNoise();
   }
 
-  // ===== Troca automática do áudio ao mudar de modo =====
+  // 5) Troca automática do áudio ao mudar de modo (se estiver tocando)
   if (isRunning) {
     resumeCtxThen(() => {
       if (mode === "sweep") {
         startSweepFromOffset(Number(seek.value));
       } else {
-        startNoise();
+        startNoise(); // usa mode (white/pink)
       }
     });
   }
@@ -762,18 +770,16 @@ seek.classList.toggle("disabled", !isSweep);
   });
 
 seek.addEventListener("input", () => {
-  if (seek.disabled) return;         // <-- adicione isto
-  if (mode !== "sweep") return;
+  if (seek.disabled) return;      // trava nos ruídos
   offsetSec = Number(seek.value);
   if (!isRunning) previewSweepAt(offsetSec);
   else updateSeekUI(offsetSec);
 });
 
 seek.addEventListener("change", () => {
-  if (seek.disabled) return;         // <-- adicione isto
-  if (mode !== "sweep") return;
+  if (seek.disabled) return;      // trava nos ruídos
   offsetSec = Number(seek.value);
-  if (isRunning) startAction();
+  if (isRunning) startAction();   // retoma do ponto
   else previewSweepAt(offsetSec);
 });
 
