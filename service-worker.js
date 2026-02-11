@@ -28,10 +28,8 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   event.respondWith(
     caches.match(req).then((cached) => {
-      // Cache-first (offline friendly)
       if (cached) return cached;
       return fetch(req).then((res) => {
-        // Salva no cache para uso futuro
         const copy = res.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
         return res;
@@ -39,7 +37,3 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
-
-
-
-
