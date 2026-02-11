@@ -716,28 +716,24 @@ openYtApp.addEventListener("click", (e) => {
     if (mode === "white") modeWhiteBtn.classList.add("active");
     if (mode === "pink")  modePinkBtn.classList.add("active");
 
-    modeName.textContent = (mode === "sweep") ? "SWEEP" : (mode === "white" ? "BRANCO" : "ROSA");
-    signalInfo.textContent = modeName.textContent;
-    curveInfo.textContent = (mode === "sweep") ? "LOG" : "—";
+modeName.textContent =
+  (mode === "sweep") ? "SWEEP" :
+  (mode === "white") ? "RUÍDO BRANCO" :
+  "RUÍDO ROSA";
 
-    if (mode === "sweep"){
-      seek.disabled = false;
-      previewSweepAt(Number(seek.value));
-    } else {
-      seek.disabled = true;
-      seek.value = "0";
-      offsetSec = 0;
-      previewNoise();
-    }
+signalInfo.textContent = modeName.textContent;
+curveInfo.textContent = (mode === "sweep") ? "LOG" : "—";
 
-    if (isRunning){
-      resumeCtxThen(() => {
-        if (mode === "sweep") startSweepFromOffset(Number(seek.value));
-        else startNoise();
-      });
-    }
-  }
-
+// ===== COR DO TEXTO DO MODO =====
+if (mode === "white") {
+  modeName.style.color = "#ffffff";
+}
+else if (mode === "pink") {
+  modeName.style.color = "#ff6ec7";
+}
+else {
+  modeName.style.color = ""; // volta para cor padrão (dinâmica do sweep)
+}
   // ===== Events =====
   vol.addEventListener("input", () => {
     const v = Number(vol.value);
@@ -802,6 +798,13 @@ openYtApp.addEventListener("click", (e) => {
   modeSweepBtn.addEventListener("click", () => setMode("sweep"));
   modeWhiteBtn.addEventListener("click", () => setMode("white"));
   modePinkBtn.addEventListener("click", () => setMode("pink"));
+
+if (mode === "white") {
+  document.documentElement.style.setProperty("--accent", "#ffffff");
+}
+else if (mode === "pink") {
+  document.documentElement.style.setProperty("--accent", "#ff6ec7");
+}
 
   // ===== Init =====
   seek.max = String(duration);
