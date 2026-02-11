@@ -220,7 +220,35 @@
       background:var(--accent);
       box-shadow: 0 0 14px rgba(255,255,255,.08);
     }
-
+.splash{
+  position:fixed; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  background:#000;
+  z-index:99999;
+  transition: opacity .25s ease;
+}
+.splash.hide{ opacity:0; pointer-events:none; }
+.splash.gone{ display:none; }
+.splashCard{
+  text-align:center;
+  padding:18px 20px;
+}
+.splashIcon{
+  width:86px; height:86px;
+  border-radius:18px;
+  margin-bottom:12px;
+}
+.splashTitle{
+  font-weight:950;
+  font-size:20px;
+  color:#fff;
+  letter-spacing:.2px;
+}
+.splashSub{
+  margin-top:4px;
+  color:#b8bcc1;
+  font-size:14px;
+}
     @media (max-width: 720px){
       #brandTop{ font-size:16px; }
       #bandLabel{ font-size:15px; }
@@ -233,7 +261,15 @@
 </head>
 
 <body>
-  <div class="stage">
+<div id="splash" class="splash" aria-hidden="true">
+  <div class="splashCard">
+    <img src="icons/icon-192.png" alt="Frequência 20/20" class="splashIcon">
+    <div class="splashTitle">Frequência 20/20</div>
+    <div class="splashSub">by Prof. Peterson Brito</div>
+  </div>
+</div>
+
+<div class="stage">
 
     <div class="center">
       <a id="brandTop" href="https://www.youtube.com/@ProfPetersonBrito" target="_blank" rel="noopener noreferrer">
@@ -719,6 +755,22 @@ function setMode(newMode){
   setMode("sweep");
   previewSweepAt(0);
   setRunning(false);
+// ===== Splash =====
+const splash = document.getElementById("splash");
+const hideSplash = () => {
+  if (!splash) return;
+  splash.classList.add("hide");
+  // depois do fade, remove do layout
+  setTimeout(() => splash.classList.add("gone"), 300);
+};
+
+// some sozinho após carregar
+window.addEventListener("load", () => setTimeout(hideSplash, 450));
+
+// some ao primeiro toque/clique
+["pointerdown","touchstart","mousedown","keydown"].forEach(evt => {
+  window.addEventListener(evt, hideSplash, { once:true, passive:true });
+});
 })();
 </script>
 
