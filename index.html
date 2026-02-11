@@ -233,8 +233,64 @@
     input[type="range"]{ width:min(260px, 78vw); }
     #freq{ font-size:clamp(56px,16vw,92px); }
   }
+.modal{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 18px;
+  z-index: 9999;
+}
+.modalCard{
+  width:min(520px, 96vw);
+  border:1px solid #2b2b2b;
+  background:#0b0b0b;
+  border-radius:18px;
+  padding:14px;
+  color:#e8eaed;
+  box-shadow: 0 18px 60px rgba(0,0,0,.5);
+}
+.modalTitle{
+  font-weight: 950;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+.modalText{
+  color:#b8bcc1;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+.modalBtns{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-bottom: 10px;
+}
+.modalClose{
+  width:100%;
+  background:#111;
+}
+
 </style>
 </head>
+
+<div id="ytModal" class="modal" hidden>
+  <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="ytTitle">
+    <div class="modalTitle" id="ytTitle">Abrir canal</div>
+    <div class="modalText">Escolha como abrir o canal do YouTube:</div>
+
+    <div class="modalBtns">
+      <button id="openYtApp" type="button">Abrir no app</button>
+      <button id="openYtWeb" type="button">Abrir no navegador</button>
+    </div>
+
+    <button id="closeYtModal" class="modalClose" type="button">Cancelar</button>
+  </div>
+</div>
 
 <body>
   <div class="stage">
@@ -317,6 +373,18 @@
   ];
 
   // ====== UI ======
+const brandTopBtn = document.getElementById("brandTop");
+
+// Modal refs
+const ytModal = document.getElementById("ytModal");
+const openYtApp = document.getElementById("openYtApp");
+const openYtWeb = document.getElementById("openYtWeb");
+const closeYtModal = document.getElementById("closeYtModal");
+
+// URLs do canal
+const YT_WEB = "https://www.youtube.com/@ProfPetersonBrito";
+const YT_APP = "youtube://www.youtube.com/@ProfPetersonBrito"; // tentativa de abrir no app
+
   const freqEl = document.getElementById("freq");
   const bandEl = document.getElementById("bandLabel");
   const tipEl  = document.getElementById("bandTip");
@@ -733,6 +801,42 @@
   setMode("sweep");
   previewSweepAt(0);
   setRunning(false);
+function showYtModal(){
+  ytModal.hidden = false;
+}
+function hideYtModal(){
+  ytModal.hidden = true;
+}
+
+brandTopBtn.addEventListener("click", () => {
+  showYtModal();
+});
+
+closeYtModal.addEventListener("click", hideYtModal);
+ytModal.addEventListener("click", (e) => {
+  if (e.target === ytModal) hideYtModal();
+});
+
+// Abrir no navegador
+openYtWeb.addEventListener("click", () => {
+  hideYtModal();
+  window.open(YT_WEB, "_blank", "noopener,noreferrer");
+});
+
+// Abrir no app (se falhar, o usuário pode escolher “navegador”)
+openYtApp.addEventListener("click", () => {
+  hideYtModal();
+
+  // tentativa de deep link
+  window.location.href = YT_APP;
+
+  // fallback (alguns iOS bloqueiam deep link)
+  setTimeout(() => {
+    // se o app não abrir, ao menos abre no web
+    window.open(YT_WEB, "_blank", "noopener,noreferrer");
+  }, 900);
+});
+
 })();
 </script>
 
