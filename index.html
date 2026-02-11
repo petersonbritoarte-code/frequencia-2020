@@ -240,6 +240,8 @@
 
     <div class="center">
 <button id="brandTop" type="button">youtube.com/@ProfPetersonBrito</button>
+<div style="color:#ff4d4d;font-weight:900;font-size:12px;margin-top:4px;">BUILD: 2026-02-11 A</div>
+
 
       <div id="modeLabel">Modo: <span class="mono" id="modeName">SWEEP</span></div>
 
@@ -401,23 +403,21 @@ function previewNoise(){
   const isWhite = (mode === "white");
   const accent = isWhite ? "#ffffff" : "#ff6ec7"; // rosa
 
-  // cor global do app (tudo que usa --accent)
+  // Interface inteira usa --accent
   document.documentElement.style.setProperty("--accent", accent);
 
-  // cor do nome do modo (caso você tenha mexido via style)
-  modeName.style.color = accent;
-
-  // textos centrais
+  // Atualiza textos centrais
   freqEl.textContent = "—";
   bandEl.textContent = isWhite ? "RUÍDO BRANCO" : "RUÍDO ROSA";
   tipEl.textContent =
     isWhite
-      ? "Energia igual por Hz. Flat tecnicamente, mas soa com excesso de agudo ao ouvido humano."
-      : "Energia por oitava (≈ -3 dB/oitava).Não Flat tecnicamente, mas soa “flat” ao ouvido; ótimo para referência.";
+      ? "Energia igual por Hz. Útil para demonstrar hiss, espectro e percepção de brilho."
+      : "Energia por oitava (≈ -3 dB/oitava). Soa mais “equilibrado” ao ouvido; ótimo para referência.";
 
-  // seek/progresso não aplicam em ruído
+  // Seek/progresso não aplicam em ruído
   seekLabel.textContent = `00:00 / ${fmtTime(duration)}`;
   progInfo.textContent = "—";
+}
 }
   function setRunning(r){
     isRunning = r;
@@ -692,10 +692,20 @@ startBtn.addEventListener("pointerdown", (e) => {
   startAction();
 }, { passive:false });
 
-// fallback
 startBtn.addEventListener("click", (e) => {
   e.preventDefault();
   startAction();
+});
+
+function startAction(){
+  resumeCtxThen(() => {
+    ensureCtx(); ensureGain();
+    if (!whiteBuf || !pinkBuf) ensureNoiseBuffers();
+    if (mode === "sweep") startSweepFromOffset(Number(seek.value));
+    else startNoise();
+  });
+}
+
 });
   });
 
@@ -761,6 +771,4 @@ brandTopBtn.addEventListener("click", () => {
 </script>
 </body>
 </html>
-
-
 
