@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Freq 20/20 — Varredura de Frequências</title>
+<title>Freq 20/20 — Varredura & Ruídos</title>
 
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#000000">
@@ -44,13 +44,28 @@
     gap:10px;
   }
 
-  #brandTop{
-    font-size: 18px;
-    font-weight: 900;
-    color:#fff;
-    opacity:.95;
-    letter-spacing:.4px;
-    margin-top:2px;
+ #brandTop{
+  appearance:none;
+  border:none;
+  background:transparent;
+  padding:0;
+  font-size: 18px;
+  font-weight: 900;
+  color:#fff;
+  opacity:.95;
+  letter-spacing:.4px;
+  cursor:pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+#brandTop:active{ opacity: .75; }
+
+  }
+
+  #modeLabel{
+    font-size:13px;
+    color:#9aa0a6;
+    margin-top:-2px;
   }
 
   #bandLabel{
@@ -123,6 +138,26 @@
   button:hover{ background:#151515; }
   button:disabled{ opacity:.5; cursor:not-allowed; }
 
+  .modeRow{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+    width:100%;
+  }
+
+  .modeBtn{
+    padding:10px 14px;
+    font-size:14px;
+    border-radius:16px;
+    font-weight:900;
+    background: rgba(17,17,17,.9);
+  }
+  .modeBtn.active{
+    border-color: var(--accent);
+    box-shadow: 0 0 18px rgba(255,255,255,.06);
+  }
+
   .box{
     width:100%;
     max-width:860px;
@@ -151,7 +186,6 @@
     font-weight:900;
   }
 
-  /* Painel de infos (fica abaixo da posição) */
   .infoPanel{
     width:100%;
     max-width:860px;
@@ -206,7 +240,11 @@
   <div class="stage">
 
     <div class="center">
-      <div id="brandTop">youtube.com/@ProfPetersonBrito</div>
+      <button id="brandTop" type="button" aria-label="Abrir canal do YouTube">
+  youtube.com/@ProfPetersonBrito
+</button>
+
+      <div id="modeLabel">Modo: <span class="mono" id="modeName">SWEEP</span></div>
 
       <div id="bandLabel">SUBGRAVE (20–40 Hz)</div>
       <div id="freq">20 Hz</div>
@@ -214,13 +252,19 @@
 
       <div class="safety">
         <strong>Segurança:</strong>
-        Comece com volume baixo. Sweeps (Varreduras) podem ficar agressivos em 2–5 kHz.
+        Comece com volume baixo. Sweeps/ruídos podem ficar agressivos em 2–5 kHz.
         Evite fones no máximo, faça pausas e interrompa ao menor sinal de desconforto.
-        O “dBFS” exibido é ganho digital (não é SPL no ouvido). O volume real depende também de seu equipamento e ajustes pessoais.
+        O “dBFS” exibido é ganho digital (não é SPL). <strong>iPhone/iPad:</strong> se estiver no modo silencioso, o Safari pode mutar o áudio.
       </div>
     </div>
 
     <div class="controls">
+      <div class="modeRow">
+        <button class="modeBtn active" id="modeSweep">Sweep</button>
+        <button class="modeBtn" id="modeWhite">Branco</button>
+        <button class="modeBtn" id="modePink">Rosa</button>
+      </div>
+
       <div class="rowBtns">
         <button id="startBtn">Iniciar</button>
         <button id="stopBtn" disabled>Parar</button>
@@ -241,15 +285,15 @@
         <b id="progInfo" class="mono">0%</b>
       </div>
 
-      <!-- Infos técnicas abaixo (sem sobrepor nada) -->
       <div class="infoPanel">
         <div class="infoRow">
-          <div class="chip"><span class="dot"></span><span>Sweep</span><b class="mono">20 → 20.000 Hz</b></div>
-          <div class="chip"><span>Curva</span><b class="mono">LOG</b></div>
+          <div class="chip"><span class="dot"></span><span>Sinal</span><b id="signalInfo" class="mono">SWEEP</b></div>
+          <div class="chip"><span>Curva</span><b id="curveInfo" class="mono">LOG</b></div>
         </div>
         <div class="infoRow">
           <div class="chip"><span>Sample rate</span><b id="srInfo" class="mono">—</b></div>
           <div class="chip"><span>Ganho</span><b id="gainInfo" class="mono">—</b></div>
+          <div class="chip"><span>Qualidade</span><b class="mono">Float32 / WebAudio</b></div>
         </div>
       </div>
     </div>
@@ -258,6 +302,9 @@
 
 <script>
 (() => {
+  // ====== CONFIG ======
+  const fStart = 20, fEnd = 20000, duration = 300;
+
   const BANDS = [
     { n:"Subgrave",    min:20,   max:40,      c:"#8bd3ff", t:"Sensação física e “peso”. Mais sentido no corpo do que no ouvido." },
     { n:"Grave-Baixo", min:40,   max:80,      c:"#66e0ff", t:"Fundação do grave. Base rítmica e sustentação do low-end." },
@@ -269,9 +316,7 @@
     { n:"Super-Agudo", min:12000,max:20000.1, c:"#ff4d4d", t:"“Ar” e cintilância. Fácil causar fadiga em volumes altos." }
   ];
 
-  const fStart = 20, fEnd = 20000, duration = 300;
-
-  // UI
+  // ====== UI ======
   const freqEl = document.getElementById("freq");
   const bandEl = document.getElementById("bandLabel");
   const tipEl  = document.getElementById("bandTip");
@@ -289,17 +334,30 @@
   const srInfo   = document.getElementById("srInfo");
   const gainInfo = document.getElementById("gainInfo");
 
-  // WebAudio
-  let ctx = null, osc = null, gain = null;
+  const modeName = document.getElementById("modeName");
+  const signalInfo = document.getElementById("signalInfo");
+  const curveInfo  = document.getElementById("curveInfo");
+
+  const modeSweepBtn = document.getElementById("modeSweep");
+  const modeWhiteBtn = document.getElementById("modeWhite");
+  const modePinkBtn  = document.getElementById("modePink");
+
+  // ====== AUDIO ======
+  let ctx = null, gain = null, osc = null, noiseSrc = null;
   let raf = null;
   let tStart = 0, tEnd = 0;
 
-  // State
+  // Buffers de ruído (loop)
+  let whiteBuf = null, pinkBuf = null;
+
+  // ====== STATE ======
   let offsetSec = 0;
   let isRunning = false;
   let isUserDrag = false;
   let lastBand = -1;
+  let mode = "sweep"; // "sweep" | "white" | "pink"
 
+  // ====== UTILS ======
   function pad2(n){ return String(n).padStart(2,"0"); }
   function fmtTime(sec){
     sec = Math.max(0, Math.floor(sec));
@@ -339,13 +397,28 @@
     progInfo.textContent = `${Math.round(p*100)}%`;
   }
 
-  function previewAt(t){
+  function previewSweepAt(t){
     const f = freqAt(t);
     freqEl.textContent = fmtHz(f);
     const bi = bandIndexFor(f);
-    applyBand(bi);
-    lastBand = bi;
+    if (bi !== lastBand){
+      applyBand(bi);
+      lastBand = bi;
+    }
     updateSeekUI(t);
+  }
+
+  function previewNoise(){
+    // Em ruído: sem banda/frequência específica
+    freqEl.textContent = "—";
+    bandEl.textContent = (mode === "white") ? "RUÍDO BRANCO" : "RUÍDO ROSA";
+    tipEl.textContent =
+      (mode === "white")
+        ? "Energia igual por Hz. Útil para mostrar espectro, hiss e percepção de brilho."
+        : "Energia por oitava (≈ -3 dB/oitava). Soa mais “equilibrado” ao ouvido; bom para referência e testes.";
+    document.documentElement.style.setProperty("--accent", (mode === "white") ? "#cfff6a" : "#ffe66a");
+    updateSeekUI(0);
+    progInfo.textContent = "—";
   }
 
   function setRunning(r){
@@ -359,13 +432,13 @@
     return ctx;
   }
 
-  // iOS-safe: NÃO usar await na cadeia do clique; usar .then()
+  // iOS-safe: evitar await dentro do gesto; usar .then()
   function resumeCtxThen(cb){
     ensureCtx();
 
     const doUnlock = () => {
+      // "ping" curtíssimo (destrava em alguns iOS/Safari)
       try{
-        // "ping" curtíssimo (destrava áudio no Safari em alguns casos)
         const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
         const src = ctx.createBufferSource();
         src.buffer = buffer;
@@ -375,15 +448,22 @@
       }catch(e){}
     };
 
-    if (ctx.state === "suspended") {
-      ctx.resume().then(() => { doUnlock(); cb(); }).catch(() => { cb(); });
-    } else {
-      doUnlock(); cb();
+    const go = () => { doUnlock(); cb(); };
+
+    if (ctx.state === "suspended") ctx.resume().then(go).catch(go);
+    else go();
+  }
+
+  function ensureGain(){
+    if (!gain){
+      gain = ctx.createGain();
+      gain.connect(ctx.destination);
     }
   }
 
-  function stopOscOnly(){
-    if (!ctx || !osc) return;
+  function stopSources(){
+    if (!ctx) return;
+
     const now = ctx.currentTime;
 
     if (gain){
@@ -391,32 +471,80 @@
       gain.gain.setValueAtTime(gain.gain.value, now);
       gain.gain.linearRampToValueAtTime(0.00001, now + 0.03);
     }
-    try { osc.stop(now + 0.04); } catch(e){}
+
+    try{ if (osc) osc.stop(now + 0.04); }catch(e){}
+    try{ if (noiseSrc) noiseSrc.stop(now + 0.04); }catch(e){}
+
     osc = null;
+    noiseSrc = null;
+
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
   }
 
-  function startInternal(newOffset){
-    // Para só o oscilador (mantém ctx vivo -> melhor no iOS)
-    if (osc) stopOscOnly();
+  // ====== NOISE GENERATORS (buffers loopáveis) ======
+  function makeWhiteBuffer(seconds=2){
+    const len = Math.floor(ctx.sampleRate * seconds);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i=0;i<len;i++){
+      data[i] = (Math.random()*2 - 1) * 0.6; // headroom
+    }
+    return buf;
+  }
+
+  // Pink noise: filtro de Paul Kellet aplicado em amostra
+  function makePinkBuffer(seconds=3){
+    const len = Math.floor(ctx.sampleRate * seconds);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const out = buf.getChannelData(0);
+
+    let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
+
+    for (let i=0; i<len; i++){
+      const white = Math.random()*2 - 1;
+
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+      b6 = white * 0.115926;
+
+      out[i] = (pink * 0.11); // escala / headroom
+    }
+    return buf;
+  }
+
+  function ensureNoiseBuffers(){
+    if (!whiteBuf) whiteBuf = makeWhiteBuffer(2);
+    if (!pinkBuf)  pinkBuf  = makePinkBuffer(3);
+  }
+
+  // ====== STARTS ======
+  function startSweepFromOffset(newOffset){
+    stopSources();
+
+    ensureGain();
+
+    // restaura volume alvo
+    const g0 = Math.max(0.00001, Number(vol.value));
+    gain.gain.setValueAtTime(g0, ctx.currentTime);
 
     offsetSec = Math.min(Math.max(newOffset, 0), duration);
     seek.value = String(offsetSec);
 
-    if (offsetSec >= duration) {
-      previewAt(duration);
+    if (offsetSec >= duration){
+      previewSweepAt(duration);
       setRunning(false);
       return;
     }
 
     osc = ctx.createOscillator();
-    gain = ctx.createGain();
     osc.type = "sine";
-
-    const g0 = Math.max(0.00001, Number(vol.value));
-    gain.gain.value = g0;
-
     osc.connect(gain);
-    gain.connect(ctx.destination);
 
     const now = ctx.currentTime;
     tStart = now + 0.05;
@@ -430,52 +558,104 @@
     srInfo.textContent = `${Math.round(ctx.sampleRate)} Hz`;
     gainInfo.textContent = `${g0.toFixed(3)} (≈ ${gainToDbfs(g0).toFixed(1)} dBFS)`;
 
-    previewAt(offsetSec);
+    previewSweepAt(offsetSec);
 
     osc.start(tStart);
     osc.stop(tEnd);
 
     setRunning(true);
-
-    if (raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(loop);
+    raf = requestAnimationFrame(loopSweep);
   }
 
-  function loop(){
+  function startNoise(){
+    stopSources();
+    ensureGain();
+    ensureNoiseBuffers();
+
+    const g0 = Math.max(0.00001, Number(vol.value));
+    gain.gain.setValueAtTime(g0, ctx.currentTime);
+
+    noiseSrc = ctx.createBufferSource();
+    noiseSrc.buffer = (mode === "white") ? whiteBuf : pinkBuf;
+    noiseSrc.loop = true;
+    noiseSrc.connect(gain);
+
+    srInfo.textContent = `${Math.round(ctx.sampleRate)} Hz`;
+    gainInfo.textContent = `${g0.toFixed(3)} (≈ ${gainToDbfs(g0).toFixed(1)} dBFS)`;
+
+    previewNoise();
+
+    // início imediato (sem rampas de freq)
+    noiseSrc.start();
+
+    setRunning(true);
+    // sem RAF obrigatório, mas mantemos gainInfo atualizando se quiser
+    raf = requestAnimationFrame(loopNoiseUI);
+  }
+
+  function loopNoiseUI(){
+    if (!ctx || !gain || !isRunning) return;
+    const g = gain.gain.value;
+    gainInfo.textContent = `${g.toFixed(3)} (≈ ${gainToDbfs(g).toFixed(1)} dBFS)`;
+    raf = requestAnimationFrame(loopNoiseUI);
+  }
+
+  function loopSweep(){
     if (!ctx || !osc) return;
 
     const now = ctx.currentTime;
     const t = offsetSec + (now - tStart);
 
-    const f = freqAt(t);
-    freqEl.textContent = fmtHz(f);
-
-    const bi = bandIndexFor(f);
-    if (bi !== lastBand){
-      applyBand(bi);
-      lastBand = bi;
-    }
-
-    if (!isUserDrag){
-      const clamped = Math.min(Math.max(t, 0), duration);
-      seek.value = String(clamped);
-      updateSeekUI(clamped);
-    }
+    previewSweepAt(Math.min(Math.max(t,0), duration));
 
     const g = gain ? gain.gain.value : Number(vol.value);
     gainInfo.textContent = `${g.toFixed(3)} (≈ ${gainToDbfs(g).toFixed(1)} dBFS)`;
 
-    if (now < tEnd) {
-      raf = requestAnimationFrame(loop);
-    } else {
+    if (now < tEnd) raf = requestAnimationFrame(loopSweep);
+    else {
       offsetSec = duration;
       setRunning(false);
-      stopOscOnly();
-      previewAt(offsetSec);
+      stopSources();
+      previewSweepAt(duration);
     }
   }
 
-  // Volume
+  // ====== MODE SWITCH ======
+  function setMode(newMode){
+    mode = newMode;
+
+    // UI dos botões
+    for (const b of [modeSweepBtn, modeWhiteBtn, modePinkBtn]) b.classList.remove("active");
+    if (mode === "sweep") modeSweepBtn.classList.add("active");
+    if (mode === "white") modeWhiteBtn.classList.add("active");
+    if (mode === "pink")  modePinkBtn.classList.add("active");
+
+    // labels
+    modeName.textContent = (mode === "sweep") ? "SWEEP" : (mode === "white" ? "BRANCO" : "ROSA");
+    signalInfo.textContent = modeName.textContent;
+    curveInfo.textContent = (mode === "sweep") ? "LOG" : "—";
+
+    // comportamento do seek
+    if (mode === "sweep"){
+      seek.disabled = false;
+      previewSweepAt(Number(seek.value));
+    } else {
+      seek.disabled = true;
+      seek.value = "0";
+      offsetSec = 0;
+      previewNoise();
+    }
+
+    // se estiver tocando, reinicia no novo modo
+    if (isRunning){
+      resumeCtxThen(() => {
+        if (mode === "sweep") startSweepFromOffset(Number(seek.value));
+        else startNoise();
+      });
+    }
+  }
+
+  // ====== EVENTS ======
   vol.addEventListener("input", () => {
     const v = Number(vol.value);
     volLabel.textContent = Math.round(v*100) + "%";
@@ -486,68 +666,72 @@
     }
   });
 
-  // Seek
+  // Seek (só no sweep)
   seek.addEventListener("input", () => {
+    if (mode !== "sweep") return;
     offsetSec = Number(seek.value);
-    if (!isRunning) previewAt(offsetSec);
+    if (!isRunning) previewSweepAt(offsetSec);
     else updateSeekUI(offsetSec);
   });
 
-  // Mobile drag
   seek.addEventListener("touchstart", () => { isUserDrag = true; }, {passive:true});
   seek.addEventListener("touchend", () => {
     isUserDrag = false;
-    if (isRunning) {
-      // garantir gesto iOS: faz resume + start dentro do mesmo fluxo do touchend
-      resumeCtxThen(() => startInternal(Number(seek.value)));
-    }
+    if (mode !== "sweep") return;
+    if (isRunning) resumeCtxThen(() => startSweepFromOffset(Number(seek.value)));
   }, {passive:true});
 
-  // iOS às vezes só dispara change confiável
   seek.addEventListener("change", () => {
+    if (mode !== "sweep") return;
     offsetSec = Number(seek.value);
-    if (isRunning) resumeCtxThen(() => startInternal(offsetSec));
-    else previewAt(offsetSec);
+    if (isRunning) resumeCtxThen(() => startSweepFromOffset(offsetSec));
+    else previewSweepAt(offsetSec);
   });
 
-  // Desktop mouse
   seek.addEventListener("mousedown", () => { isUserDrag = true; });
   window.addEventListener("mouseup", () => {
     if (!isUserDrag) return;
     isUserDrag = false;
-    if (isRunning) resumeCtxThen(() => startInternal(Number(seek.value)));
+    if (mode !== "sweep") return;
+    if (isRunning) resumeCtxThen(() => startSweepFromOffset(Number(seek.value)));
   });
 
-  // Botões
   startBtn.addEventListener("click", () => {
-    resumeCtxThen(() => startInternal(Number(seek.value)));
+    resumeCtxThen(() => {
+      ensureCtx(); ensureGain();
+      if (!whiteBuf || !pinkBuf) ensureNoiseBuffers();
+      if (mode === "sweep") startSweepFromOffset(Number(seek.value));
+      else startNoise();
+    });
   });
 
   stopBtn.addEventListener("click", () => {
-    if (raf) cancelAnimationFrame(raf);
-    raf = null;
-
-    stopOscOnly();
-
-    offsetSec = Number(seek.value);
+    stopSources();
     setRunning(false);
     srInfo.textContent = "—";
-    previewAt(offsetSec);
-
-    // Mantém ctx aberto (melhor para iOS). Se quiser fechar, descomente:
-    // if (ctx){ try{ ctx.close(); }catch(e){} ctx=null; }
+    if (mode === "sweep") {
+      offsetSec = Number(seek.value);
+      previewSweepAt(offsetSec);
+    } else {
+      previewNoise();
+    }
   });
 
-  // Init
+  modeSweepBtn.addEventListener("click", () => setMode("sweep"));
+  modeWhiteBtn.addEventListener("click", () => setMode("white"));
+  modePinkBtn.addEventListener("click",  () => setMode("pink"));
+
+  // ====== INIT ======
+  seek.max = String(duration);
+  seek.value = "0";
+
   const gInit = Number(vol.value);
   volLabel.textContent = Math.round(gInit*100) + "%";
   gainInfo.textContent = `${gInit.toFixed(3)} (≈ ${gainToDbfs(gInit).toFixed(1)} dBFS)`;
 
-  seek.max = String(duration);
-  seek.value = "0";
-  offsetSec = 0;
-
-  previewAt(0);
+  // estado inicial: sweep
+  setMode("sweep");
+  previewSweepAt(0);
   setRunning(false);
 })();
 </script>
