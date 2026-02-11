@@ -719,8 +719,12 @@ signalInfo.textContent = "RUÍDO ROSA (Pink Noise)";
     modeName.style.color = "#ff6ec7";
     previewNoise();
 // habilita/desabilita o seek conforme modo
-seek.disabled = (mode !== "sweep");
-seek.classList.toggle("disabled", mode !== "sweep");
+// Normaliza o modo (evita "SWEEP" / "Sweep" quebrar comparações)
+mode = String(mode).toLowerCase();
+
+const isSweep = (mode === "sweep");
+seek.disabled = !isSweep;
+seek.classList.toggle("disabled", !isSweep);
   }
 
   // ===== Troca automática do áudio ao mudar de modo =====
@@ -757,19 +761,21 @@ seek.classList.toggle("disabled", mode !== "sweep");
     }
   });
 
-  seek.addEventListener("input", () => {
-    if (mode !== "sweep") return;
-    offsetSec = Number(seek.value);
-    if (!isRunning) previewSweepAt(offsetSec);
-    else updateSeekUI(offsetSec);
-  });
+seek.addEventListener("input", () => {
+  if (seek.disabled) return;         // <-- adicione isto
+  if (mode !== "sweep") return;
+  offsetSec = Number(seek.value);
+  if (!isRunning) previewSweepAt(offsetSec);
+  else updateSeekUI(offsetSec);
+});
 
-  seek.addEventListener("change", () => {
-    if (mode !== "sweep") return;
-    offsetSec = Number(seek.value);
-    if (isRunning) startAction(); // recomeça do ponto
-    else previewSweepAt(offsetSec);
-  });
+seek.addEventListener("change", () => {
+  if (seek.disabled) return;         // <-- adicione isto
+  if (mode !== "sweep") return;
+  offsetSec = Number(seek.value);
+  if (isRunning) startAction();
+  else previewSweepAt(offsetSec);
+});
 
   // Start (pointerdown ajuda no iOS/Safari)
   startBtn.addEventListener("pointerdown", (e) => {
