@@ -1,9 +1,10 @@
-const CACHE_NAME = "freq-2020-v1.1";
+const CACHE_NAME = "freq-2020-v1.2";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
   "./service-worker.js",
+  "./og-image.png", 
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
@@ -37,4 +38,3 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
-
