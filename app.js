@@ -1,4 +1,3 @@
-<script>
 (() => {
   // ====== CONFIG ======
   const fStart = 20, fEnd = 20000, duration = 300;
@@ -508,7 +507,6 @@ window.addEventListener("load", () => setTimeout(hideSplash, 450));
   window.addEventListener(evt, hideSplash, { once:true, passive:true });
 });
 })();
-</script>
 
 <script>
   if ("serviceWorker" in navigator) {
