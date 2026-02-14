@@ -3,8 +3,8 @@
     *{ box-sizing:border-box; }
 
   /* Tema padrão (Deep Audio) */
-  --bg0: #071A1D;   /* topo – azul escuro com toque verde */
-  --bg1: #041012;   /* base – mais profundo e elegante */
+  --bg0: #061414;  /* verde-azulado muito escuro */
+  --bg1: #020909;  /* quase preto, mas com fundo verde */
 
   --card: rgba(255,255,255,0.06);
   --card2: rgba(255,255,255,0.04);
