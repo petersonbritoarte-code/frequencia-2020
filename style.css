@@ -1,23 +1,9 @@
-<style>
     :root{ color-scheme: dark; --accent:#8bd3ff; }
     *{ box-sizing:border-box; }
 
-  /* Tema padrão (Deep Audio) */
-  --bg0: #061414;  /* verde-azulado muito escuro */
-  --bg1: #020909;  /* quase preto, mas com fundo verde */
-
-  --card: rgba(255,255,255,0.06);
-  --card2: rgba(255,255,255,0.04);
-  --border: rgba(255,255,255,0.10);
-
-  --text: #E6EDF3;
-  --muted: #AAB4C0;
-
-  --btn: rgba(255,255,255,0.08);
-  --btnBorder: rgba(255,255,255,0.12);
-
-  --shadow: 0 10px 30px rgba(0,0,0,0.35);
-  --theme-ease: 250ms ease;
+html[data-theme="deep"]{
+  --bg0: #061414;
+  --bg1: #020909;
 }
 
 /* Temas alternativos */
@@ -419,5 +405,3 @@ input[type="range"].disabled{
 @media (max-width: 420px){
   .toplink{ font-size: 14px; }
 }
-
-  </style>
